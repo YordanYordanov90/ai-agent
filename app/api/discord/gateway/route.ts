@@ -4,7 +4,8 @@
  * **Vercel Hobby:** Built-in `vercel.json` crons are limited to **once per day**, so you
  * cannot use Vercel Cron for every-9-minute pings. Use an external scheduler instead, for example:
  * - [Upstash QStash](https://upstash.com/docs/qstash): schedule a GET to this route every
- *   ~5–8 minutes (must overlap your `durationMs` listener window). Set a custom header
+ *   ~3–4 minutes on Hobby (must overlap the listener window; max function time is 300s).
+ *   Set a custom header
  *   `Authorization: Bearer <CRON_SECRET>` (same secret as `CRON_SECRET` in Vercel).
  * - Any other HTTPS cron (GitHub Actions, cron-job.org, etc.) with the same auth header.
  *
@@ -14,7 +15,8 @@
 import { after } from "next/server";
 import { chat } from "@/lib/discord-chat";
 
-export const maxDuration = 800;
+// Hobby: 1–300s. Pro can raise this in dashboard / plan limits; keep listener under timeout.
+export const maxDuration = 300;
 
 const normalizeHost = (host: string) => host.replace(/^https?:\/\//, "").replace(/\/+$/, "");
 
@@ -35,7 +37,8 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const webhookUrl = `https://${normalizeHost(hostSource)}/api/discord`;
-  const durationMs = 600_000;
+  // Slightly under maxDuration (seconds) so the worker is not cut off mid-flight.
+  const durationMs = Math.max(1, (maxDuration - 10) * 1000);
 
   await chat.initialize();
   const discordAdapter = chat.getAdapter("discord");
