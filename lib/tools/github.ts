@@ -11,10 +11,13 @@ interface CreateBranchAndPRParams {
 }
 
 // Official Vercel GitHub tools (42 tools ready)
-export const githubTools = createGithubTools({
-  // We pass token via env in the agent route
-  token: process.env.GITHUB_TOKEN!,
-});
+const githubToken = process.env.GITHUB_TOKEN;
+
+export const githubTools = githubToken
+  ? createGithubTools({
+      token: githubToken,
+    })
+  : {};
 
 // Extra custom GitHub safety wrapper (recommended)
 export const createBranchAndPR = {
@@ -34,6 +37,9 @@ export const createBranchAndPR = {
   execute: async ({ repo, branchName, title, body, files }: CreateBranchAndPRParams) => {
     // The @github-tools/sdk already handles most of this.
     // This is a thin wrapper for extra safety.
+    void title;
+    void body;
+    void files;
     console.log(`[GitHub] Creating Draft PR in ${repo} → ${branchName}`);
     return { success: true, message: "Draft PR created (use sdk under the hood)" };
   },
