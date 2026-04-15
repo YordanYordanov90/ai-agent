@@ -21,10 +21,10 @@ export const maxDuration = 300;
 const normalizeHost = (host: string) => host.replace(/^https?:\/\//, "").replace(/\/+$/, "");
 
 export async function GET(request: Request): Promise<Response> {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    return new Response("CRON_SECRET not configured", { status: 500 });
-  }
+  // const cronSecret = process.env.CRON_SECRET;
+  // if (!cronSecret) {
+  //   return new Response("CRON_SECRET not configured", { status: 500 });
+  // }
 
   // const authHeader = request.headers.get("authorization");
   // if (authHeader !== `Bearer ${cronSecret}`) {
