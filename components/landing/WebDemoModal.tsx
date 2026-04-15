@@ -128,9 +128,11 @@ export function WebDemoModal({ isOpen, onClose }: WebDemoModalProps) {
         <div className="space-y-3 p-5">
           {error ? <p className="font-mono text-xs text-red-400">Error: {error}</p> : null}
           <textarea
+            id="web-demo-message"
             value={input}
             onChange={(event) => setInput(event.target.value)}
             placeholder="Ask Cody..."
+            aria-label="Message to Cody"
             className="h-24 w-full resize-none border border-zinc-700 bg-zinc-950 p-3 font-mono text-sm text-zinc-100 outline-none focus:border-emerald-500"
           />
           <div className="flex items-center justify-end gap-3">

@@ -1,6 +1,6 @@
-import { LandingHero } from '@/components/landing/LandigHero';
-import { LandingNavbar } from '@/components/landing/LandigNavbar';
-import { LandingFaq } from '@/components/landing/LandigFaq';
+import { LandingHero } from "@/components/landing/LandingHero";
+import { LandingNavbar } from "@/components/landing/LandingNavbar";
+import { LandingFaq } from "@/components/landing/LandingFaq";
 import { Terminal, GitMerge, LineChart, TrendingUp, Zap, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -50,7 +50,8 @@ export default function Home() {
               <LineChart className="h-10 w-10 text-emerald-500 mb-8" strokeWidth={1.5} />
               <h3 className="text-2xl font-bold text-white uppercase tracking-wide mb-4">Market Intel</h3>
               <p className="text-zinc-400 font-mono text-sm leading-relaxed">
-                Real-time ingestion of crypto & stock APIs. Instantly query charts, analyze sentiment, and execute trading strategies.
+                Crypto and stock tools for prices and context. Cody summarizes data and always asks before any suggestion
+                that could affect money or repos — not automated trading.
               </p>
             </div>
 
@@ -102,7 +103,7 @@ export default function Home() {
                   <div className="w-4 h-4 bg-zinc-800 absolute right-[-8px]"></div>
                   <div className="w-full max-w-sm border border-zinc-800 bg-black p-6 font-mono text-sm text-zinc-500">
                     <Zap className="h-5 w-5 mb-4 text-emerald-500" />
-                    [PROCESSING VIA GROK-4.20]
+                    [PROCESSING VIA GROK-4-1-FAST-REASONING]
                     <br />&gt; Building AST...
                     <br />&gt; Resolving Zod schemas...
                   </div>
@@ -110,7 +111,10 @@ export default function Home() {
                 <div className="md:pl-16 order-2 md:order-0">
                   <div className="text-zinc-700 font-mono font-bold text-6xl mb-4">/02</div>
                   <h4 className="text-2xl font-bold text-white uppercase mb-3">Agentic Synthesis</h4>
-                  <p className="text-zinc-400 font-mono text-sm">Vercel AI SDK routes the request to Grok-4.20. Code is synthesized, typed, and validated securely in milliseconds.</p>
+                  <p className="text-zinc-400 font-mono text-sm">
+                    The Vercel AI SDK streams from xAI <span className="text-emerald-500/90">grok-4-1-fast-reasoning</span>{" "}
+                    (same model as production). Responses are typed and validated before they reach you.
+                  </p>
                 </div>
               </div>
 
@@ -119,7 +123,10 @@ export default function Home() {
                 <div className="md:text-right md:pr-16">
                   <div className="text-white font-mono font-bold text-6xl mb-4">/03</div>
                   <h4 className="text-2xl font-bold text-white uppercase mb-3">Deploy & Merge</h4>
-                  <p className="text-zinc-400 font-mono text-sm">Cody pushes directly to GitHub. You review the draft PR, run tests, and merge. Zero friction.</p>
+                  <p className="text-zinc-400 font-mono text-sm">
+                    Cody opens branches and Draft PRs on GitHub — you review, run tests, and merge. Nothing lands on main
+                    without your say-so.
+                  </p>
                 </div>
                 <div className="hidden md:flex items-center justify-center relative">
                   <div className="w-4 h-4 bg-white absolute left-[-8px]"></div>
@@ -151,6 +158,7 @@ export default function Home() {
             <a
               href="https://discord.com/developers/applications"
               target="_blank"
+              rel="noopener noreferrer"
             >
               Authenticate Bot
               <Terminal className="h-6 w-6 ml-4" />

@@ -13,9 +13,23 @@ export const webSearchMarketing = tool({
   inputSchema: webSearchMarketingInputSchema,
   execute: async ({ query }) => {
     // Simple free search fallback (you can upgrade to Serper, Tavily, or Exa later)
-    const res = await fetch(
-      `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`
-    );
+    const signal = AbortSignal.timeout(12_000);
+    let res: Response;
+    try {
+      res = await fetch(
+        `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`,
+        { signal }
+      );
+    } catch (cause) {
+      const timedOut = cause instanceof Error && cause.name === "TimeoutError";
+      return {
+        query,
+        results: [] as Array<{ text: string; url: string }>,
+        summary: timedOut
+          ? "Search timed out after 12s. Answer from general knowledge if appropriate."
+          : "Search request failed (network). Answer from general knowledge if appropriate.",
+      };
+    }
 
     if (!res.ok) {
       return {

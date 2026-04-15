@@ -8,8 +8,20 @@ import { getRedis } from "@/lib/redis";
 // Hobby: 1–300s. Pro can raise this in dashboard / plan limits; keep listener under timeout.
 export const maxDuration = 300;
 
-const normalizeHost = (host: string) => host.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-const inMemoryProcessedMessages = new Map<string, number>();
+/** In-memory dedupe when Redis is unavailable; entries are pruned on each use. */
+const memoryClaim = new Map<string, number>();
+const memoryDone = new Map<string, number>();
+let redisFallbackWarned = false;
+
+const pruneMemoryDedupeMaps = (): void => {
+  const now = Date.now();
+  for (const [k, exp] of memoryClaim) {
+    if (exp <= now) memoryClaim.delete(k);
+  }
+  for (const [k, exp] of memoryDone) {
+    if (exp <= now) memoryDone.delete(k);
+  }
+};
 
 const DISCORD_MAX_MESSAGE_LENGTH = 2000;
 
@@ -59,7 +71,8 @@ const startGatewayKeepalive = async (): Promise<Response> => {
     return new Response("VERCEL_URL not configured", { status: 500 });
   }
 
-  const webhookUrl = `https://${normalizeHost(hostSource)}/api/discord`;
+  const host = hostSource.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  const webhookUrl = `https://${host}/api/discord`;
   // Slightly under maxDuration (seconds) so the worker is not cut off mid-flight.
   const durationMs = Math.max(1, (maxDuration - 10) * 1000);
 
@@ -80,20 +93,41 @@ const handleAgentJob = async (payload: {
   channelId: string;
   messageId: string;
 }): Promise<Response> => {
-  const doneKey = `qstash:discord:done:${payload.messageId}`;
+  const type = "agent" as const;
+  const { messageId } = payload;
+  const claimKey = `qstash:discord:claim:${messageId}`;
+  const doneKey = `qstash:discord:done:${messageId}`;
 
   const redis = getRedis();
   if (redis) {
     const alreadyDone = await redis.get(doneKey);
     if (alreadyDone) {
+      console.log(`[QStash] ${type} ${messageId} - duplicate`);
+      return Response.json({ ok: true, duplicate: true });
+    }
+    const acquired = await redis.set(claimKey, "1", { nx: true, ex: 300 });
+    if (acquired === null) {
+      console.log(`[QStash] ${type} ${messageId} - duplicate`);
       return Response.json({ ok: true, duplicate: true });
     }
   } else {
+    if (!redisFallbackWarned) {
+      redisFallbackWarned = true;
+      console.warn("[QStash] Redis not available – falling back to in-memory dedupe");
+    }
+    pruneMemoryDedupeMaps();
     const now = Date.now();
-    const expiresAt = inMemoryProcessedMessages.get(doneKey);
-    if (typeof expiresAt === "number" && expiresAt > now) {
+    const doneExp = memoryDone.get(messageId);
+    if (typeof doneExp === "number" && doneExp > now) {
+      console.log(`[QStash] ${type} ${messageId} - duplicate`);
       return Response.json({ ok: true, duplicate: true });
     }
+    const claimExp = memoryClaim.get(messageId);
+    if (typeof claimExp === "number" && claimExp > now) {
+      console.log(`[QStash] ${type} ${messageId} - duplicate`);
+      return Response.json({ ok: true, duplicate: true });
+    }
+    memoryClaim.set(messageId, now + 300 * 1000);
   }
 
   try {
@@ -104,14 +138,28 @@ const handleAgentJob = async (payload: {
     });
 
     await postDiscordMessage(payload.channelId, result.text);
+
     if (redis) {
-      await redis.set(doneKey, "1", { ex: 60 * 60 * 24 });
+      await redis.set(doneKey, "1", { ex: 86400 });
+      await redis.del(claimKey);
     } else {
-      inMemoryProcessedMessages.set(doneKey, Date.now() + 24 * 60 * 60 * 1000);
+      pruneMemoryDedupeMaps();
+      memoryClaim.delete(messageId);
+      memoryDone.set(messageId, Date.now() + 86400 * 1000);
     }
+
+    console.log(`[QStash] ${type} ${messageId} - executed`);
     return Response.json({ ok: true });
   } catch (error) {
     console.error("[Discord Gateway] Agent job failed", error);
+    if (redis) {
+      await redis.del(claimKey);
+    } else {
+      pruneMemoryDedupeMaps();
+      memoryClaim.delete(messageId);
+    }
+    console.log(`[QStash] ${messageId} - claim released (agent failed, retry eligible)`);
+
     try {
       await postDiscordMessage(
         payload.channelId,
@@ -144,6 +192,10 @@ const handler = async (request: Request): Promise<Response> => {
     }
     const parsed = qstashJobSchema.safeParse(parsedJson);
     if (!parsed.success) {
+      console.error("[Discord Gateway] QStash payload validation failed", parsed.error);
+      if (process.env.NODE_ENV === "production") {
+        return Response.json({ error: "Invalid QStash payload" }, { status: 400 });
+      }
       return Response.json(
         { error: "Invalid QStash payload", details: parsed.error.flatten() },
         { status: 400 }

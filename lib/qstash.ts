@@ -3,13 +3,21 @@ import { z } from "zod";
 
 const normalizeHost = (host: string) => host.replace(/^https?:\/\//, "").replace(/\/+$/, "");
 
+/** Discord API snowflake (numeric id); matches `lib/discord-target-channel.ts` conventions. */
+const discordSnowflake = z.string().regex(/^\d{5,32}$/u);
+
+/**
+ * Dedupe key: real Discord message ids are snowflakes; the webhook path may use a UUID when id is missing.
+ */
+const qstashMessageId = z.union([discordSnowflake, z.string().uuid()]);
+
 export const qstashJobSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("agent"),
     text: z.string().min(1),
-    userId: z.string().min(1),
-    channelId: z.string().min(1),
-    messageId: z.string().min(1),
+    userId: z.string().min(1).max(256),
+    channelId: discordSnowflake,
+    messageId: qstashMessageId,
   }),
   z.object({
     type: z.literal("keepalive"),
