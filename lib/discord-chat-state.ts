@@ -135,6 +135,7 @@ export function createMemoryStateAdapter(): StateAdapter {
       return true;
     },
     async subscribe(threadId) {
+      console.log(`[State] subscribed to ${threadId} (memory)`);
       subscriptions.add(threadId);
     },
     async unsubscribe(threadId) {
@@ -270,6 +271,7 @@ export function createRedisStateAdapter(redis: Redis): StateAdapter {
     },
 
     async subscribe(threadId) {
+      console.log(`[State] subscribed to ${threadId} (Redis)`);
       await redis.sadd(SUBS_KEY, threadId);
     },
 

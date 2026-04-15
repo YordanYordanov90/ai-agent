@@ -1,6 +1,6 @@
 // app/api/discord/route.ts
 import { NextRequest } from "next/server";
-import { chat } from "@/lib/discord-chat";
+import { chat, state } from "@/lib/discord-chat";
 import { resolveDiscordApiChannelId } from "@/lib/discord-target-channel";
 import { publishQstashJob } from "@/lib/qstash";
 
@@ -50,6 +50,7 @@ chat.onDirectMessage(async (thread, message) => {
       channelId: discordChannelId,
       messageId,
     });
+    await state.subscribe(discordChannelId);
   } catch (error) {
     console.error("[Discord Route] QStash publish failed (DM)", error);
     await thread.post(
@@ -94,6 +95,7 @@ chat.onNewMention(async (thread, message) => {
       channelId: discordChannelId,
       messageId,
     });
+    await state.subscribe(discordChannelId);
   } catch (error) {
     console.error("[Discord Route] QStash publish failed (mention)", error);
     await thread.post(

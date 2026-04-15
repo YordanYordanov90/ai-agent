@@ -6,7 +6,7 @@ import { getRedis } from "@/lib/redis";
 const MEMORY_WARN_KEY = "__codyDiscordChatMemoryWarned";
 
 const redis = getRedis();
-const state =
+export const state =
   redis !== null ? createRedisStateAdapter(redis) : createMemoryStateAdapter();
 
 if (redis === null && (Boolean(process.env.VERCEL) || process.env.NODE_ENV === "production")) {

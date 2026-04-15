@@ -24,6 +24,33 @@ const pruneMemoryDedupeMaps = (): void => {
 };
 
 const DISCORD_MAX_MESSAGE_LENGTH = 2000;
+const HISTORY_MAX_ITEMS = 20;
+const HISTORY_TTL_SECONDS = 60 * 60 * 24;
+
+type ChatHistoryMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+const historyKey = (channelId: string) => `cody:chat:history:${channelId}`;
+
+const parseHistoryMessage = (raw: unknown): ChatHistoryMessage | null => {
+  if (typeof raw !== "string") return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      (parsed.role === "user" || parsed.role === "assistant") &&
+      typeof parsed.content === "string"
+    ) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
 
 const truncateForDiscord = (content: string): string => {
   if (content.length <= DISCORD_MAX_MESSAGE_LENGTH) return content;
@@ -131,8 +158,21 @@ const handleAgentJob = async (payload: {
   }
 
   try {
+    let priorMessages: ChatHistoryMessage[] = [];
+    if (redis) {
+      const rawHistory = await redis.lrange(historyKey(payload.channelId), 0, -1);
+      priorMessages = rawHistory
+        .map((item) => parseHistoryMessage(typeof item === "string" ? item : JSON.stringify(item)))
+        .filter((item): item is ChatHistoryMessage => item !== null);
+    }
+
+    const messages: ChatHistoryMessage[] = [
+      ...priorMessages,
+      { role: "user", content: payload.text },
+    ];
+
     const result = await createCodyAgent({
-      messages: [{ role: "user", content: payload.text }],
+      messages,
       userId: payload.userId,
       channelId: payload.channelId,
     });
@@ -140,6 +180,11 @@ const handleAgentJob = async (payload: {
     await postDiscordMessage(payload.channelId, result.text);
 
     if (redis) {
+      const hk = historyKey(payload.channelId);
+      await redis.rpush(hk, JSON.stringify({ role: "user", content: payload.text }));
+      await redis.rpush(hk, JSON.stringify({ role: "assistant", content: result.text }));
+      await redis.ltrim(hk, -HISTORY_MAX_ITEMS, -1);
+      await redis.expire(hk, HISTORY_TTL_SECONDS);
       await redis.set(doneKey, "1", { ex: 86400 });
       await redis.del(claimKey);
     } else {
