@@ -1,7 +1,7 @@
 // app/api/discord/route.ts
 import { NextRequest } from "next/server";
-import { createCodyAgent } from "@/lib/agent";
 import { chat } from "@/lib/discord-chat";
+import { publishQstashJob } from "@/lib/qstash";
 
 const readStringProp = (source: unknown, key: string): string | null => {
   if (typeof source !== "object" || source === null) return null;
@@ -17,12 +17,22 @@ chat.onDirectMessage(async (thread, message) => {
     return;
   }
 
-  const responseText = await createCodyAgent({
-    messages: [{ role: "user", content: text }],
-    userId: readStringProp(message, "authorId") ?? readStringProp(message, "userId") ?? "discord-user",
-    channelId: readStringProp(thread, "id") ?? "discord",
+  const userId =
+    readStringProp(message, "authorId") ??
+    readStringProp(message, "userId") ??
+    "discord-user";
+  const channelId = readStringProp(thread, "id") ?? "discord";
+  const messageId = readStringProp(message, "id") ?? crypto.randomUUID();
+
+  await publishQstashJob({
+    type: "agent",
+    text,
+    userId,
+    channelId,
+    messageId,
   });
-  await thread.post(responseText.text);
+
+  await thread.post("Processing your request. I will reply in a moment.");
 });
 
 chat.onNewMention(async (thread, message) => {
@@ -32,12 +42,22 @@ chat.onNewMention(async (thread, message) => {
     return;
   }
 
-  const responseText = await createCodyAgent({
-    messages: [{ role: "user", content: text }],
-    userId: readStringProp(message, "authorId") ?? readStringProp(message, "userId") ?? "discord-user",
-    channelId: readStringProp(thread, "id") ?? "discord",
+  const userId =
+    readStringProp(message, "authorId") ??
+    readStringProp(message, "userId") ??
+    "discord-user";
+  const channelId = readStringProp(thread, "id") ?? "discord";
+  const messageId = readStringProp(message, "id") ?? crypto.randomUUID();
+
+  await publishQstashJob({
+    type: "agent",
+    text,
+    userId,
+    channelId,
+    messageId,
   });
-  await thread.post(responseText.text);
+
+  await thread.post("Processing your request. I will reply in a moment.");
 });
 
 export async function POST(req: NextRequest) {

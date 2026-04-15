@@ -1,10 +1,10 @@
 # Cody — Product Requirements Document
 
-**Version**: 1.5
-**Date**: April 14, 2026
+**Version**: 1.6
+**Date**: April 15, 2026
 **Status**: Active development
 **Author**: Yordan Yordanov
-**Companion to**: `TECHNICAL.md`
+**Companion to**: `TECHNICAL_.md`
 
 ---
 
@@ -66,9 +66,11 @@ The fastest way to go from idea → production code → deployed feature, plus i
 
 ---
 
-## Key Technical Notes (verified April 14, 2026)
+## Key Technical Notes (verified April 15, 2026)
 
-- Discord: **HTTP Interactions only** (no Gateway, no cron jobs)
+- Discord: **Hybrid architecture** using HTTP Interactions + Gateway worker
+- Scheduling: **Cron jobs enabled** for recurring automations and maintenance tasks
+- Execution model: **QStash async pipeline** for Discord commands and scheduled jobs
 - UI: Tailwind CSS v4 + **shadcn/ui**
 - State / Memory: Upstash Redis (free tier sufficient)
 - Grok models: `grok-4.20-reasoning` (default) or `grok-4-1-fast-reasoning`
@@ -87,6 +89,23 @@ The fastest way to go from idea → production code → deployed feature, plus i
 - Crypto & stock tools
 - Marketing web-search tool
 - Upstash Redis for memory & rate limiting
+- QStash delivery for deferred Discord execution
+
+---
+
+## Discord + Gateway + Cron + QStash Flow
+
+To reliably run Cody inside Discord, all non-trivial work is processed asynchronously through QStash:
+
+1. Discord sends interaction to `/api/discord`
+2. Server verifies Discord signature and immediately returns a deferred ACK
+3. Interaction payload is published to QStash
+4. QStash calls worker route (e.g. `/api/discord/gateway`) for execution
+5. Worker executes agent/tooling and posts final response back to Discord
+6. Gateway listener handles realtime events when needed and can enqueue QStash tasks
+7. Cron jobs enqueue scheduled tasks into QStash for delayed/repeating workflows
+
+This guarantees Discord timing compliance, supports realtime Gateway workflows, and enables scheduled automations while keeping full agent capability (GitHub, market tools, marketing actions).
 
 ### Phase 3 — Polish & Memory
 - Conversation memory (Upstash Redis)

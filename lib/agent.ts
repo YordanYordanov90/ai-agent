@@ -30,12 +30,18 @@ type AgentInput = {
 };
 
 export async function createCodyAgent({ messages, userId, channelId }: AgentInput) {
-  void userId;
-  void channelId;
+  const messagesWithContext = [
+    {
+      role: "assistant" as const,
+      content: `Execution context: userId=${userId}; channelId=${channelId}`,
+    },
+    ...messages,
+  ];
+
   const result = await streamText({
     model: xai("grok-4-1-fast-reasoning"), 
     system: SYSTEM_PROMPT,
-    messages,
+    messages: messagesWithContext,
     tools: {
       ...githubTools,
       getCryptoData,

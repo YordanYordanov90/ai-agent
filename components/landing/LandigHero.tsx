@@ -7,6 +7,12 @@ import { WebDemoModal } from "@/components/landing/WebDemoModal";
 
 export function LandingHero() {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
+  const discordAppId = process.env.NEXT_PUBLIC_DISCORD_APPLICATION_ID;
+  const discordInstallUrl = discordAppId
+    ? `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(
+        discordAppId
+      )}&permissions=84992&integration_type=0&scope=bot+applications.commands`
+    : "https://discord.com/developers/applications";
 
   return (
     <>
@@ -50,8 +56,9 @@ export function LandingHero() {
               <div className="flex flex-wrap items-center gap-6 pt-4">
                 <Button asChild size="lg" className="bg-emerald-500 hover:bg-emerald-400 text-black border-none">
                   <a
-                    href="https://discord.com/developers/applications"
+                    href={discordInstallUrl}
                     target="_blank"
+                    rel="noreferrer"
                   >
                     Connect to Server
                     <Terminal className="h-5 w-5 ml-3" />
