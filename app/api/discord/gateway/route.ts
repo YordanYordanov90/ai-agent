@@ -28,7 +28,12 @@ const postDiscordMessage = async (channelId: string, content: string): Promise<v
   const targetChannelId = channelId.startsWith("discord:")
     ? resolveDiscordApiChannelId(channelId)
     : channelId;
-  const bodyContent = truncateForDiscord(content);
+  const trimmed = content.trim();
+  const bodyContent = truncateForDiscord(
+    trimmed.length > 0
+      ? trimmed
+      : "No response text was produced. Please try again. If this keeps happening, check Vercel logs for the gateway worker."
+  );
 
   const response = await fetch(
     `https://discord.com/api/v10/channels/${targetChannelId}/messages`,

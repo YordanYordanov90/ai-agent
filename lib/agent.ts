@@ -1,5 +1,5 @@
 // lib/agent.ts
-import { streamText } from "ai";
+import { stepCountIs, streamText } from "ai";
 import { xai } from "@ai-sdk/xai";
 
 // Import tools (we'll create these next)
@@ -39,7 +39,7 @@ export async function createCodyAgent({ messages, userId, channelId }: AgentInpu
   ];
 
   const result = await streamText({
-    model: xai("grok-4-1-fast-reasoning"), 
+    model: xai("grok-4-1-fast-reasoning"),
     system: SYSTEM_PROMPT,
     messages: messagesWithContext,
     tools: {
@@ -50,8 +50,10 @@ export async function createCodyAgent({ messages, userId, channelId }: AgentInpu
     },
     maxOutputTokens: 4000,
     temperature: 0.7,
-    // Enable tool calling + streaming
     toolChoice: "auto",
+    // Default is stepCountIs(1): model stops right after a tool call with no final text.
+    // Allow tool run + assistant answer (and a few extra steps for multi-tool flows).
+    stopWhen: stepCountIs(12),
   });
 
   // Return text + any tool calls for Discord
