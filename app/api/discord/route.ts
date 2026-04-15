@@ -11,6 +11,12 @@ const readStringProp = (source: unknown, key: string): string | null => {
   return typeof value === "string" && value.length > 0 ? value : null;
 };
 
+/** Short acknowledgment while QStash runs the agent (Discord shows this immediately). */
+const QUEUED_REPLY_DM =
+  "**Acknowledged.** I'm drafting a response now — I'll post it here in a moment.";
+const QUEUED_REPLY_MENTION =
+  "**Acknowledged.** I'm drafting a response now — I'll follow up in this thread shortly.";
+
 chat.onDirectMessage(async (thread, message) => {
   const text = message.text?.trim();
   if (!text) {
@@ -52,7 +58,7 @@ chat.onDirectMessage(async (thread, message) => {
     return;
   }
 
-  await thread.post("Processing your request. I will reply in a moment.");
+  await thread.post(QUEUED_REPLY_DM);
 });
 
 chat.onNewMention(async (thread, message) => {
@@ -96,7 +102,7 @@ chat.onNewMention(async (thread, message) => {
     return;
   }
 
-  await thread.post("Processing your request. I will reply in a moment.");
+  await thread.post(QUEUED_REPLY_MENTION);
 });
 
 export async function POST(req: NextRequest) {

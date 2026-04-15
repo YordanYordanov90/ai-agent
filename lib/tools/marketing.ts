@@ -17,12 +17,29 @@ export const webSearchMarketing = tool({
       `https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json`
     );
 
-    if (!res.ok) throw new Error("Search failed");
-    const data = await res.json() as {
+    if (!res.ok) {
+      return {
+        query,
+        results: [] as Array<{ text: string; url: string }>,
+        summary: `Search request failed (HTTP ${res.status}). Answer from general knowledge if appropriate.`,
+      };
+    }
+
+    let data: {
       Abstract?: string;
       AbstractURL?: string;
       RelatedTopics?: Array<{ Text?: string; FirstURL?: string; Topics?: Array<{ Text?: string; FirstURL?: string }> }>;
     };
+    try {
+      data = (await res.json()) as typeof data;
+    } catch {
+      return {
+        query,
+        results: [] as Array<{ text: string; url: string }>,
+        summary: "Search returned invalid JSON. Answer from general knowledge if appropriate.",
+      };
+    }
+
     const topicResults = (data.RelatedTopics ?? [])
       .flatMap((item) => ("Topics" in item && Array.isArray(item.Topics) ? item.Topics : [item]))
       .map((item) => ({
