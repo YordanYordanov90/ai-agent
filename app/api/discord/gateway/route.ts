@@ -106,7 +106,6 @@ const handler = async (request: Request): Promise<Response> => {
     const verified = await verifyQstashSignature({
       signature,
       body: rawBody,
-      url: request.url,
     });
     if (!verified) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
