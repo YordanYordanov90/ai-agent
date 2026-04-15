@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { chat } from "@/lib/discord-chat";
 import { createCodyAgent } from "@/lib/agent";
+import { resolveDiscordApiChannelId } from "@/lib/discord-target-channel";
 import { qstashJobSchema, verifyQstashSignature } from "@/lib/qstash";
 import { getRedis } from "@/lib/redis";
 
@@ -10,20 +11,34 @@ export const maxDuration = 300;
 const normalizeHost = (host: string) => host.replace(/^https?:\/\//, "").replace(/\/+$/, "");
 const inMemoryProcessedMessages = new Map<string, number>();
 
+const DISCORD_MAX_MESSAGE_LENGTH = 2000;
+
+const truncateForDiscord = (content: string): string => {
+  if (content.length <= DISCORD_MAX_MESSAGE_LENGTH) return content;
+  const suffix = "\n\n_(truncated)_";
+  const max = DISCORD_MAX_MESSAGE_LENGTH - suffix.length;
+  return `${content.slice(0, Math.max(0, max))}${suffix}`;
+};
+
 const postDiscordMessage = async (channelId: string, content: string): Promise<void> => {
   if (!process.env.DISCORD_BOT_TOKEN) {
     throw new Error("DISCORD_BOT_TOKEN not configured");
   }
 
+  const targetChannelId = channelId.startsWith("discord:")
+    ? resolveDiscordApiChannelId(channelId)
+    : channelId;
+  const bodyContent = truncateForDiscord(content);
+
   const response = await fetch(
-    `https://discord.com/api/v10/channels/${channelId}/messages`,
+    `https://discord.com/api/v10/channels/${targetChannelId}/messages`,
     {
       method: "POST",
       headers: {
         Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content: bodyContent }),
     }
   );
 
@@ -60,24 +75,20 @@ const handleAgentJob = async (payload: {
   channelId: string;
   messageId: string;
 }): Promise<Response> => {
-  const idempotencyKey = `qstash:discord:message:${payload.messageId}`;
-  let acquired = true;
+  const doneKey = `qstash:discord:done:${payload.messageId}`;
 
   const redis = getRedis();
   if (redis) {
-    acquired = Boolean(await redis.set(idempotencyKey, "1", { nx: true, ex: 60 * 15 }));
+    const alreadyDone = await redis.get(doneKey);
+    if (alreadyDone) {
+      return Response.json({ ok: true, duplicate: true });
+    }
   } else {
     const now = Date.now();
-    const expiresAt = inMemoryProcessedMessages.get(idempotencyKey);
+    const expiresAt = inMemoryProcessedMessages.get(doneKey);
     if (typeof expiresAt === "number" && expiresAt > now) {
-      acquired = false;
-    } else {
-      inMemoryProcessedMessages.set(idempotencyKey, now + 15 * 60 * 1000);
+      return Response.json({ ok: true, duplicate: true });
     }
-  }
-
-  if (!acquired) {
-    return Response.json({ ok: true, duplicate: true });
   }
 
   try {
@@ -88,13 +99,22 @@ const handleAgentJob = async (payload: {
     });
 
     await postDiscordMessage(payload.channelId, result.text);
+    if (redis) {
+      await redis.set(doneKey, "1", { ex: 60 * 60 * 24 });
+    } else {
+      inMemoryProcessedMessages.set(doneKey, Date.now() + 24 * 60 * 60 * 1000);
+    }
     return Response.json({ ok: true });
   } catch (error) {
     console.error("[Discord Gateway] Agent job failed", error);
-    await postDiscordMessage(
-      payload.channelId,
-      "I hit an error while processing your request. Please try again in a moment."
-    );
+    try {
+      await postDiscordMessage(
+        payload.channelId,
+        "I hit an error while processing your request. Please try again in a moment."
+      );
+    } catch (fallbackError) {
+      console.error("[Discord Gateway] Error fallback post failed", fallbackError);
+    }
     return Response.json({ ok: false }, { status: 500 });
   }
 };
