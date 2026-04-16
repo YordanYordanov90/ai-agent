@@ -101,7 +101,7 @@ export function LandingFaq() {
         <div className="bg-zinc-950 border border-zinc-900 p-8 md:p-12 shadow-2xl animate-fade-up [animation-delay:220ms]">
           <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq, i) => (
-              <AccordionItem key={i} value={`item-${i}`}>
+              <AccordionItem key={faq.question} value={`item-${i}`}>
                 <AccordionTrigger>{faq.question}</AccordionTrigger>
                 <AccordionContent>{faq.answer}</AccordionContent>
               </AccordionItem>

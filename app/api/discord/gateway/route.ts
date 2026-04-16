@@ -1,7 +1,8 @@
 import { after } from "next/server";
-import { chat } from "@/lib/discord-chat";
+import { getDiscordChat } from "@/lib/discord-chat";
 import { createCodyAgent } from "@/lib/agent";
 import { resolveDiscordApiChannelId } from "@/lib/discord-target-channel";
+import { appendToConversation, getConversationHistory, type ChatMessage } from "@/lib/memory";
 import { qstashJobSchema, verifyQstashSignature } from "@/lib/qstash";
 import { getRedis } from "@/lib/redis";
 
@@ -12,6 +13,7 @@ export const maxDuration = 300;
 const memoryClaim = new Map<string, number>();
 const memoryDone = new Map<string, number>();
 let redisFallbackWarned = false;
+const IS_PRODUCTION_RUNTIME = Boolean(process.env.VERCEL) || process.env.NODE_ENV === "production";
 
 const pruneMemoryDedupeMaps = (): void => {
   const now = Date.now();
@@ -24,33 +26,6 @@ const pruneMemoryDedupeMaps = (): void => {
 };
 
 const DISCORD_MAX_MESSAGE_LENGTH = 2000;
-const HISTORY_MAX_ITEMS = 20;
-const HISTORY_TTL_SECONDS = 60 * 60 * 24;
-
-type ChatHistoryMessage = {
-  role: "user" | "assistant";
-  content: string;
-};
-
-const historyKey = (channelId: string) => `cody:chat:history:${channelId}`;
-
-const parseHistoryMessage = (raw: unknown): ChatHistoryMessage | null => {
-  if (typeof raw !== "string") return null;
-  try {
-    const parsed = JSON.parse(raw);
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      (parsed.role === "user" || parsed.role === "assistant") &&
-      typeof parsed.content === "string"
-    ) {
-      return parsed;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-};
 
 const truncateForDiscord = (content: string): string => {
   if (content.length <= DISCORD_MAX_MESSAGE_LENGTH) return content;
@@ -102,12 +77,13 @@ const startGatewayKeepalive = async (): Promise<Response> => {
   const webhookUrl = `https://${host}/api/discord`;
   // Slightly under maxDuration (seconds) so the worker is not cut off mid-flight.
   const durationMs = Math.max(1, (maxDuration - 10) * 1000);
+  const chat = getDiscordChat();
 
   await chat.initialize();
   const discordAdapter = chat.getAdapter("discord");
 
   return discordAdapter.startGatewayListener(
-    { waitUntil: (task) => after(() => task) },
+    { waitUntil: (task: Promise<unknown>) => after(() => task) },
     durationMs,
     undefined,
     webhookUrl
@@ -138,6 +114,13 @@ const handleAgentJob = async (payload: {
       return Response.json({ ok: true, duplicate: true });
     }
   } else {
+    if (IS_PRODUCTION_RUNTIME) {
+      console.error("[QStash] Redis required for dedupe in production runtime");
+      return Response.json(
+        { error: "Redis is required for Discord worker dedupe in production." },
+        { status: 503 }
+      );
+    }
     if (!redisFallbackWarned) {
       redisFallbackWarned = true;
       console.warn("[QStash] Redis not available – falling back to in-memory dedupe");
@@ -158,16 +141,10 @@ const handleAgentJob = async (payload: {
   }
 
   try {
-    let priorMessages: ChatHistoryMessage[] = [];
-    if (redis) {
-      const rawHistory = await redis.lrange(historyKey(payload.channelId), 0, -1);
-      priorMessages = rawHistory
-        .map((item) => parseHistoryMessage(typeof item === "string" ? item : JSON.stringify(item)))
-        .filter((item): item is ChatHistoryMessage => item !== null);
-    }
-
-    const messages: ChatHistoryMessage[] = [
-      ...priorMessages,
+    const history = await getConversationHistory(payload.channelId);
+    console.log(`[Memory] Loaded ${history.length} turns for channel ${payload.channelId}`);
+    const messages: ChatMessage[] = [
+      ...history,
       { role: "user", content: payload.text },
     ];
 
@@ -176,15 +153,13 @@ const handleAgentJob = async (payload: {
       userId: payload.userId,
       channelId: payload.channelId,
     });
+    const assistantText = await result.text;
 
-    await postDiscordMessage(payload.channelId, result.text);
+    await postDiscordMessage(payload.channelId, assistantText);
 
     if (redis) {
-      const hk = historyKey(payload.channelId);
-      await redis.rpush(hk, JSON.stringify({ role: "user", content: payload.text }));
-      await redis.rpush(hk, JSON.stringify({ role: "assistant", content: result.text }));
-      await redis.ltrim(hk, -HISTORY_MAX_ITEMS, -1);
-      await redis.expire(hk, HISTORY_TTL_SECONDS);
+      await appendToConversation(payload.channelId, payload.text, assistantText);
+      console.log(`[Memory] Appended user+assistant turns for channel ${payload.channelId}`);
       await redis.set(doneKey, "1", { ex: 86400 });
       await redis.del(claimKey);
     } else {

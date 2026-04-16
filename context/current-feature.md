@@ -1,5 +1,46 @@
 ### Quick Wins (Low/No Risk)
 
+_Scope: universal-nextjs-scanner pass — 2026-04-16._
+
+**Quick Win #1: Rename `proxy.ts` → `middleware.ts` (CRITICAL auth fix)**
+- File: `proxy.ts`
+- Time: ~1 minute
+- Risk: None
+- Benefit: Next.js only executes `middleware.ts` as route middleware. The current `proxy.ts` is silently ignored, meaning `/dashboard(.*)` has zero server-side auth protection. Renaming fixes it immediately.
+- Suggested change: `Rename-Item proxy.ts middleware.ts` (PowerShell)
+
+**Quick Win #2: Add `aria-labelledby` to the web demo dialog**
+- File: `components/landing/WebDemoModal.tsx:173-181`
+- Time: ~5 minutes
+- Risk: None
+- Benefit: Screen readers announce the dialog's visible title ("Live Cody Chat") rather than a mismatched `aria-label`.
+- Suggested change: Add `id="demo-dialog-title"` to the `<h3>` at line 181; replace `aria-label="Init Web Demo"` with `aria-labelledby="demo-dialog-title"`.
+
+**Quick Win #3: Fix FAQ `key` to use question text instead of array index**
+- File: `components/landing/LandingFaq.tsx:103`
+- Time: ~1 minute
+- Risk: None
+- Benefit: Stable React keys; prevents subtle reconciliation bugs if items are ever reordered.
+- Suggested change: `key={faq.question}` instead of `key={i}`.
+
+**Quick Win #4: Fix `body` font-family to use the CSS theme variable**
+- File: `app/globals.css:25`
+- Time: ~2 minutes
+- Risk: None
+- Benefit: Ensures Geist Sans applies consistently via the theme variable rather than the hardcoded Arial fallback overriding it.
+- Suggested change: `font-family: var(--font-sans, Arial, Helvetica, sans-serif);`
+
+**Quick Win #5: Remove internal doc-reference text from JSX comments**
+- Files: `app/dashboard/page.tsx:60,88` · `components/landing/WebDemoModal.tsx:230`
+- Time: ~5 minutes
+- Risk: None
+- Benefit: Keeps source clean; internal doc names (`PRD_.md`, `TECHNICAL_.md`) are stripped at build time but clutter reviews.
+- Suggested change: Remove the doc-reference text from the JSX comments, keeping only intent comments if any.
+
+---
+
+### Quick Wins (Low/No Risk)
+
 _Scope: universal-nextjs-scanner pass — 2026-04-15._
 
 **Quick Win #1: Make navbar brand a real home link**

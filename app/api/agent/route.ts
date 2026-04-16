@@ -5,6 +5,7 @@ import { createCodyAgent } from "@/lib/agent";
 import { z } from "zod";
 
 const ROUTING_MAX = 256;
+const DEMO_MAX_USER_MESSAGES = 3;
 
 const messageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -13,6 +14,8 @@ const messageSchema = z.object({
 
 const RequestSchema = z.object({
   messages: z.array(messageSchema).min(1).max(40),
+  mode: z.enum(["default", "demo"]).optional(),
+  demoMode: z.boolean().optional(),
   userId: z
     .string()
     .max(ROUTING_MAX)
@@ -39,16 +42,37 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const { messages, userId, channelId } = parsed.data;
+    const { messages, userId, channelId, mode, demoMode } = parsed.data;
+    const resolvedUserId = userId || "web-user";
+    const resolvedChannelId = channelId || "web";
+    const isDemoMode =
+      mode === "demo" ||
+      demoMode === true ||
+      resolvedUserId.startsWith("web-demo") ||
+      resolvedChannelId.startsWith("web-demo");
+    const userMessageCount = messages.filter((message) => message.role === "user").length;
+    if (isDemoMode && userMessageCount > DEMO_MAX_USER_MESSAGES) {
+      return Response.json(
+        {
+          error:
+            "Demo message limit reached. Please sign in and connect Cody to continue.",
+        },
+        { status: 429 }
+      );
+    }
 
     const result = await createCodyAgent({
       messages,
-      userId: userId || "web-user",
-      channelId: channelId || "web",
+      userId: resolvedUserId,
+      channelId: resolvedChannelId,
+      demoMode: isDemoMode,
     });
 
-    return Response.json({
-      text: result.text,
+    return result.toTextStreamResponse({
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+      },
     });
   } catch (error) {
     console.error("[Agent API] Error:", error);

@@ -1,18 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 import { Terminal, Activity, GitPullRequest } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WebDemoModal } from "@/components/landing/WebDemoModal";
+import { getDiscordInstallUrl } from "@/lib/discord";
 
 export function LandingHero() {
   const [isDemoOpen, setIsDemoOpen] = useState(false);
-  const discordAppId = process.env.NEXT_PUBLIC_DISCORD_APPLICATION_ID;
-  const discordInstallUrl = discordAppId
-    ? `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(
-        discordAppId
-      )}&permissions=84992&integration_type=0&scope=bot+applications.commands`
-    : "https://discord.com/developers/applications";
+  const { isSignedIn } = useUser();
+  const discordInstallUrl = getDiscordInstallUrl(
+    process.env.NEXT_PUBLIC_DISCORD_APPLICATION_ID ?? ""
+  );
 
   return (
     <>
@@ -52,12 +53,22 @@ export function LandingHero() {
               </p>
 
               <div className="flex flex-wrap items-center gap-6 pt-4">
-                <Button asChild size="lg" className="bg-emerald-500 hover:bg-emerald-400 text-black border-none">
-                  <a href={discordInstallUrl} target="_blank" rel="noopener noreferrer">
-                    Connect to Server
-                    <Terminal className="h-5 w-5 ml-3" />
-                  </a>
-                </Button>
+                {/* PRD_/TECHNICAL_: keep public landing demo, gate only connect flow by auth state */}
+                {!isSignedIn ? (
+                  <Button asChild size="lg" className="bg-emerald-500 hover:bg-emerald-400 text-black border-none">
+                    <Link href="/sign-in">
+                      Sign in to connect Cody
+                      <Terminal className="h-5 w-5 ml-3" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button asChild size="lg" className="bg-emerald-500 hover:bg-emerald-400 text-black border-none">
+                    <a href={discordInstallUrl} target="_blank" rel="noopener noreferrer">
+                      Connect to Server
+                      <Terminal className="h-5 w-5 ml-3" />
+                    </a>
+                  </Button>
+                )}
                 <Button variant="outline" size="lg" onClick={() => setIsDemoOpen(true)}>
                   Init Web Demo
                 </Button>

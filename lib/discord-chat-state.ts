@@ -9,6 +9,7 @@ const listKey = (key: string) => `${P}list:${key}`;
 const lockKey = (threadId: string) => `${P}lock:${threadId}`;
 const queueKey = (threadId: string) => `${P}queue:${threadId}`;
 const SUBS_KEY = `${P}subs`;
+const SUBS_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 const isExpired = (expiresAt?: number) =>
   typeof expiresAt === "number" && expiresAt <= Date.now();
@@ -273,6 +274,7 @@ export function createRedisStateAdapter(redis: Redis): StateAdapter {
     async subscribe(threadId) {
       console.log(`[State] subscribed to ${threadId} (Redis)`);
       await redis.sadd(SUBS_KEY, threadId);
+      await redis.expire(SUBS_KEY, SUBS_TTL_SECONDS);
     },
 
     async unsubscribe(threadId) {

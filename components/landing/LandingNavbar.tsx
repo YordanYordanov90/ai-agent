@@ -3,11 +3,14 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 import { Terminal, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function LandingNavbar() {
   const [scrollProgress, setScrollProgress] = useState(0);
+  const { isSignedIn } = useUser();
+  const deployHref = isSignedIn ? "/dashboard" : "/sign-in";
 
   useEffect(() => {
     const updateProgress = () => {
@@ -56,20 +59,16 @@ export function LandingNavbar() {
               [02] Workflow
             </Link>
             <Button asChild className="relative overflow-hidden group">
-              <a
-                href="https://discord.com/developers/applications"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
+              <Link href={deployHref}>
                 <span className="relative z-10 flex items-center gap-x-2">
-                  Deploy Agent
+                  {isSignedIn ? "Open Dashboard" : "Sign in to deploy"}
                   <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </span>
                 <div className="absolute inset-0 border border-black/20 pointer-events-none"></div>
                 {/* Decorative brutalist corners */}
                 <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-black/50"></div>
                 <div className="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-black/50"></div>
-              </a>
+              </Link>
             </Button>
           </div>
         </div>

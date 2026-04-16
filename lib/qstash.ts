@@ -54,7 +54,7 @@ export const publishQstashJob = async (job: QstashJob) => {
     url,
     body: job,
     retries: 3,
-    deduplicationId: job.messageId,
+    ...(job.messageId ? { deduplicationId: job.messageId } : {}),
   });
 };
 
