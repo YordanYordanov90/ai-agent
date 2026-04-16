@@ -70,7 +70,8 @@ export const getStockPrice = tool({
 
     try {
       const lastTradeUrl = `${base}/v2/last/trade/${encodeURIComponent(sym)}`;
-      const res = await fetch(lastTradeUrl, { headers: polygonAuthHeaders(key) });
+      const signal = AbortSignal.timeout(12_000);
+      const res = await fetch(lastTradeUrl, { headers: polygonAuthHeaders(key), signal });
       const bodyText = await res.text();
 
       if (res.ok) {
@@ -91,7 +92,8 @@ export const getStockPrice = tool({
       // /v2/last/trade often returns 403 NOT_AUTHORIZED on free/starter plans — use previous day bar.
       if (res.status === 403) {
         const prevUrl = `${base}/v2/aggs/ticker/${encodeURIComponent(sym)}/prev?adjusted=true`;
-        const prevRes = await fetch(prevUrl, { headers: polygonAuthHeaders(key) });
+        const prevSignal = AbortSignal.timeout(12_000);
+        const prevRes = await fetch(prevUrl, { headers: polygonAuthHeaders(key), signal: prevSignal });
         const prevText = await prevRes.text();
 
         if (!prevRes.ok) {
@@ -138,8 +140,13 @@ export const getStockPrice = tool({
         detail: bodyText.slice(0, 300),
       };
     } catch (cause) {
+      const timedOut = cause instanceof Error && cause.name === "TimeoutError";
       const message = cause instanceof Error ? cause.message : "Unknown error";
-      return { error: true as const, symbol: sym, message: `Polygon fetch failed: ${message}` };
+      return {
+        error: true as const,
+        symbol: sym,
+        message: timedOut ? "Polygon request timed out after 12s." : `Polygon fetch failed: ${message}`,
+      };
     }
   },
 });

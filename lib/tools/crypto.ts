@@ -32,7 +32,8 @@ export const getCryptoData = tool({
     )}&vs_currencies=usd&include_24hr_change=true&include_market_cap=true`;
 
     try {
-      const res = await fetch(url, { headers: coingeckoHeaders() });
+      const signal = AbortSignal.timeout(12_000);
+      const res = await fetch(url, { headers: coingeckoHeaders(), signal });
       const bodyText = await res.text();
 
       if (!res.ok) {
@@ -64,8 +65,14 @@ export const getCryptoData = tool({
 
       return row as Record<string, unknown>;
     } catch (cause) {
+      const timedOut = cause instanceof Error && cause.name === "TimeoutError";
       const message = cause instanceof Error ? cause.message : "Unknown error";
-      return { error: true as const, message: `CoinGecko fetch failed: ${message}` };
+      return {
+        error: true as const,
+        message: timedOut
+          ? "CoinGecko request timed out after 12s."
+          : `CoinGecko fetch failed: ${message}`,
+      };
     }
   },
 });

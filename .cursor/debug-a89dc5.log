@@ -1,0 +1,25 @@
+{"sessionId":"a89dc5","location":"next.config.ts:headers","message":"CSP headers configured","data":{"csp":"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'none';","headerCount":5},"timestamp":1776332092993,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"next.config.ts:headers","message":"CSP headers configured","data":{"csp":"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'none';","headerCount":5},"timestamp":1776332151554,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"proxy.ts:entry","message":"middleware entry","data":{"url":"/","method":"GET"},"timestamp":1776332157119,"hypothesisId":"H-C"}
+{"sessionId":"a89dc5","location":"proxy.ts:exit","message":"middleware exit","data":{"url":"/","elapsed":1},"timestamp":1776332157120,"hypothesisId":"H-C"}
+{"sessionId":"a89dc5","location":"app/layout.tsx:render","message":"RootLayout rendering","data":{},"timestamp":1776332157325,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"app/page.tsx:render","message":"Home component rendering on server","data":{},"timestamp":1776332157331,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"LandingHero.tsx:hydrate","message":"LandingHero hydrated on client","data":{},"timestamp":1776332157624,"hypothesisId":"H-B"}
+{"sessionId":"a89dc5","location":"proxy.ts:entry","message":"middleware entry","data":{"url":"/.well-known/appspecific/com.chrome.devtools.json","method":"GET"},"timestamp":1776332181949,"hypothesisId":"H-C"}
+{"sessionId":"a89dc5","location":"proxy.ts:exit","message":"middleware exit","data":{"url":"/.well-known/appspecific/com.chrome.devtools.json","elapsed":1},"timestamp":1776332181950,"hypothesisId":"H-C"}
+{"sessionId":"a89dc5","location":"next.config.ts:headers","message":"CSP headers configured","data":{"csp":"default-src 'self'; script-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:; worker-src 'self' blob:; frame-src 'self' https://*.clerk.accounts.dev; object-src 'none'; base-uri 'self'; frame-ancestors 'none';","headerCount":5},"timestamp":1776332256688,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"proxy.ts:entry","message":"middleware entry","data":{"url":"/","method":"GET"},"timestamp":1776332268571,"hypothesisId":"H-C"}
+{"sessionId":"a89dc5","location":"proxy.ts:exit","message":"middleware exit","data":{"url":"/","elapsed":2},"timestamp":1776332268573,"hypothesisId":"H-C"}
+{"sessionId":"a89dc5","location":"app/layout.tsx:render","message":"RootLayout rendering","data":{},"timestamp":1776332268772,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"app/page.tsx:render","message":"Home component rendering on server","data":{},"timestamp":1776332268778,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"LandingHero.tsx:hydrate","message":"LandingHero hydrated on client","data":{},"timestamp":1776332269049,"hypothesisId":"H-B"}
+{"sessionId":"a89dc5","location":"next.config.ts:headers","message":"CSP headers configured","data":{"csp":"default-src 'self'; script-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:; worker-src 'self' blob:; frame-src 'self' https://*.clerk.accounts.dev; object-src 'none'; base-uri 'self'; frame-ancestors 'none';","headerCount":5},"timestamp":1776332325011,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"proxy.ts:entry","message":"middleware entry","data":{"url":"/","method":"GET"},"timestamp":1776332326235,"hypothesisId":"H-C"}
+{"sessionId":"a89dc5","location":"proxy.ts:exit","message":"middleware exit","data":{"url":"/","elapsed":1},"timestamp":1776332326236,"hypothesisId":"H-C"}
+{"sessionId":"a89dc5","location":"app/layout.tsx:render","message":"RootLayout rendering","data":{},"timestamp":1776332326446,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"app/page.tsx:render","message":"Home component rendering on server","data":{},"timestamp":1776332326452,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"LandingHero.tsx:hydrate","message":"LandingHero hydrated on client","data":{},"timestamp":1776332326764,"hypothesisId":"H-B"}
+{"sessionId":"a89dc5","location":"app/layout.tsx:render","message":"RootLayout rendering","data":{},"timestamp":1776332354388,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"app/page.tsx:render","message":"Home component rendering on server","data":{},"timestamp":1776332354391,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"app/layout.tsx:render","message":"RootLayout rendering","data":{},"timestamp":1776332360364,"hypothesisId":"H-A"}
+{"sessionId":"a89dc5","location":"app/layout.tsx:render","message":"RootLayout rendering","data":{},"timestamp":1776332360420,"hypothesisId":"H-A"}

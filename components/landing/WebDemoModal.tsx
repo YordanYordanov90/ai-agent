@@ -89,9 +89,12 @@ export function WebDemoModal({ isOpen, onClose }: WebDemoModalProps) {
     setIsStreaming(true);
 
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30_000);
       const response = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           messages: nextMessages,
           userId: "web-demo-user",
@@ -99,6 +102,7 @@ export function WebDemoModal({ isOpen, onClose }: WebDemoModalProps) {
           mode: "demo",
         }),
       });
+      clearTimeout(timeout);
 
       if (!response.ok) {
         let fallbackError = "Request failed";
@@ -149,7 +153,12 @@ export function WebDemoModal({ isOpen, onClose }: WebDemoModalProps) {
         )
       );
     } catch (sendError) {
-      const message = sendError instanceof Error ? sendError.message : "Unexpected error";
+      const message =
+        sendError instanceof DOMException && sendError.name === "AbortError"
+          ? "Request timed out after 30s. Please try again."
+          : sendError instanceof Error
+            ? sendError.message
+            : "Unexpected error";
       setError(message);
     } finally {
       setIsStreaming(false);
