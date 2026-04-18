@@ -1,6 +1,7 @@
 import { after } from "next/server";
-import { getDiscordChat } from "@/lib/discord-chat";
 import { createCodyAgent } from "@/lib/agent";
+import { formatAssistantTextForDiscord } from "@/lib/discord-message-format";
+import { getDiscordChat } from "@/lib/discord-chat";
 import { resolveDiscordApiChannelId } from "@/lib/discord-target-channel";
 import { appendToConversation, getConversationHistory, type ChatMessage } from "@/lib/memory";
 import { qstashJobSchema, verifyQstashSignature } from "@/lib/qstash";
@@ -152,13 +153,15 @@ const handleAgentJob = async (payload: {
       messages,
       userId: payload.userId,
       channelId: payload.channelId,
+      outputSurface: "discord",
     });
     const assistantText = await result.text;
+    const discordText = formatAssistantTextForDiscord(assistantText);
 
-    await postDiscordMessage(payload.channelId, assistantText);
+    await postDiscordMessage(payload.channelId, discordText);
 
     if (redis) {
-      await appendToConversation(payload.channelId, payload.text, assistantText);
+      await appendToConversation(payload.channelId, payload.text, discordText);
       console.log(`[Memory] Appended user+assistant turns for channel ${payload.channelId}`);
       await redis.set(doneKey, "1", { ex: 86400 });
       await redis.del(claimKey);

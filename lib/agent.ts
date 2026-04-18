@@ -26,15 +26,22 @@ You are extremely helpful, precise, and production-oriented.
 const DEMO_MODE_GUARDRAIL =
   "You are in DEMO MODE on the public landing page. You can analyze, explain code, answer questions about stocks/crypto/marketing, but you MUST NOT create GitHub PRs, branches, or perform any write actions. Always remind the user this is a demo.";
 
+const DISCORD_OUTPUT_RULES = `## Discord message formatting (this reply is posted to Discord)
+- Do not use HTML for layout (no tags such as <br> or <b>; Discord will show them literally). Use line breaks and Discord Markdown only.
+- For tables, ASCII grids, or any column-aligned text, put them in a fenced code block (triple backticks) so Discord uses a monospace font. Do not rely on pipe-only tables outside a code block—they will not align.
+- Prefer short bullet lists or paragraphs when a code block is not needed.`;
+
 const buildSystemPrompt = (options?: {
   routing?: { userId: string; channelId: string };
   demoMode?: boolean;
+  outputSurface?: "discord" | "default";
 }): string => {
   const dateLine = `Current date: ${new Date().toISOString()}`;
+  const discordBlock = options?.outputSurface === "discord" ? `\n\n${DISCORD_OUTPUT_RULES}` : "";
   if (!options?.routing) {
     return options?.demoMode
-      ? `${SYSTEM_PROMPT_BASE}\n\n${DEMO_MODE_GUARDRAIL}\n\n${dateLine}`
-      : `${SYSTEM_PROMPT_BASE}\n\n${dateLine}`;
+      ? `${SYSTEM_PROMPT_BASE}\n\n${DEMO_MODE_GUARDRAIL}${discordBlock}\n\n${dateLine}`
+      : `${SYSTEM_PROMPT_BASE}${discordBlock}\n\n${dateLine}`;
   }
   const userId = sanitizeRoutingLabel(options.routing.userId, ROUTING_LABEL_MAX);
   const channelId = sanitizeRoutingLabel(options.routing.channelId, ROUTING_LABEL_MAX);
@@ -44,7 +51,7 @@ user_id: ${userId}
 channel_id: ${channelId}`;
   // PRD_.md + TECHNICAL_.md: public landing demo must be strictly read-only.
   const guardrailBlock = options.demoMode ? `\n\n${DEMO_MODE_GUARDRAIL}` : "";
-  return `${SYSTEM_PROMPT_BASE}${guardrailBlock}\n\n${routingBlock}\n\n${dateLine}`;
+  return `${SYSTEM_PROMPT_BASE}${guardrailBlock}\n\n${routingBlock}${discordBlock}\n\n${dateLine}`;
 };
 
 type AgentInput = {
@@ -52,9 +59,17 @@ type AgentInput = {
   userId: string;
   channelId: string;
   demoMode?: boolean;
+  /** When "discord", append formatting rules for Discord Markdown (web API omits this). */
+  outputSurface?: "discord" | "default";
 };
 
-export async function createCodyAgent({ messages, userId, channelId, demoMode = false }: AgentInput) {
+export async function createCodyAgent({
+  messages,
+  userId,
+  channelId,
+  demoMode = false,
+  outputSurface = "default",
+}: AgentInput) {
   const tools = demoMode
     ? {
         getCryptoData,
@@ -73,6 +88,7 @@ export async function createCodyAgent({ messages, userId, channelId, demoMode = 
     system: buildSystemPrompt({
       routing: { userId, channelId },
       demoMode,
+      outputSurface,
     }),
     messages,
     tools,
