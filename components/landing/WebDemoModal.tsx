@@ -97,9 +97,6 @@ export function WebDemoModal({ isOpen, onClose }: WebDemoModalProps) {
         signal: controller.signal,
         body: JSON.stringify({
           messages: nextMessages,
-          userId: "web-demo-user",
-          channelId: "web-demo",
-          mode: "demo",
         }),
       });
       clearTimeout(timeout);

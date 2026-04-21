@@ -6,9 +6,12 @@ const KEY_TTL_SECONDS = 60;
 const USER_LIMIT = 10;
 const CHANNEL_LIMIT = 40;
 
+const WEB_IP_LIMIT = 5;
+const WEB_UNKNOWN_IP_LIMIT = 2;
+
 type RateLimitReason = "user" | "channel";
 
-type RateLimitResult = {
+export type RateLimitResult = {
   allowed: boolean;
   retryAfterSeconds: number;
   reason?: RateLimitReason;
@@ -87,6 +90,48 @@ export async function checkDiscordRateLimit(input: {
     };
   } catch (error) {
     console.warn("[RateLimit] Redis check failed; allowing request", error);
+    return { allowed: true, retryAfterSeconds: waitSeconds, windowSlot };
+  }
+}
+
+export async function checkWebAgentRateLimit(
+  clientIp: string
+): Promise<RateLimitResult> {
+  const redis = getRedis();
+  const windowSlot = currentWindowSlot();
+  const waitSeconds = retryAfterSeconds();
+  const limit =
+    clientIp === "unknown" ? WEB_UNKNOWN_IP_LIMIT : WEB_IP_LIMIT;
+
+  if (!redis) {
+    return { allowed: true, retryAfterSeconds: waitSeconds, windowSlot };
+  }
+
+  try {
+    const ipKey = windowKey("cody:rl:web:ip", clientIp, windowSlot);
+    const count = await incrementWindowCounter(ipKey);
+
+    if (count > limit) {
+      return {
+        allowed: false,
+        reason: "user",
+        retryAfterSeconds: waitSeconds,
+        userCount: count,
+        windowSlot,
+      };
+    }
+
+    return {
+      allowed: true,
+      retryAfterSeconds: waitSeconds,
+      userCount: count,
+      windowSlot,
+    };
+  } catch (error) {
+    console.warn(
+      "[RateLimit] Web rate-limit Redis check failed; allowing request",
+      error
+    );
     return { allowed: true, retryAfterSeconds: waitSeconds, windowSlot };
   }
 }

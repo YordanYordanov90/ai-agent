@@ -10,6 +10,8 @@ import { webSearchMarketing } from "@/lib/tools/marketing";
 
 const ROUTING_LABEL_MAX = 256;
 
+const DEMO_MAX_STEPS = 4;
+const FULL_MAX_STEPS = 12;
 // Core system prompt (date appended per request so long-lived workers stay accurate)
 const SYSTEM_PROMPT_BASE = `You are Cody — a senior full-stack engineer and business analyst living in Discord.
 
@@ -97,7 +99,7 @@ export async function createCodyAgent({
     toolChoice: "auto",
     // Default is stepCountIs(1): model stops right after a tool call with no final text.
     // Allow tool run + assistant answer (and a few extra steps for multi-tool flows).
-    stopWhen: stepCountIs(12),
+    stopWhen: stepCountIs(demoMode ? DEMO_MAX_STEPS : FULL_MAX_STEPS),
   });
 
   return result;

@@ -1,14 +1,12 @@
-import { after } from "next/server";
 import { createCodyAgent } from "@/lib/agent";
 import { formatAssistantTextForDiscord } from "@/lib/discord-message-format";
-import { getDiscordChat } from "@/lib/discord-chat";
 import { resolveDiscordApiChannelId } from "@/lib/discord-target-channel";
 import { appendToConversation, getConversationHistory, type ChatMessage } from "@/lib/memory";
 import { qstashJobSchema, verifyQstashSignature } from "@/lib/qstash";
 import { getRedis } from "@/lib/redis";
 
-// Hobby: 1–300s. Pro can raise this in dashboard / plan limits; keep listener under timeout.
-export const maxDuration = 300;
+export const maxDuration = 120;
+export const dynamic = "force-dynamic";
 
 /** In-memory dedupe when Redis is unavailable; entries are pruned on each use. */
 const memoryClaim = new Map<string, number>();
@@ -68,29 +66,6 @@ const postDiscordMessage = async (channelId: string, content: string): Promise<v
   }
 };
 
-const startGatewayKeepalive = async (): Promise<Response> => {
-  const hostSource = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
-  if (!hostSource) {
-    return new Response("VERCEL_URL not configured", { status: 500 });
-  }
-
-  const host = hostSource.replace(/^https?:\/\//, "").replace(/\/+$/, "");
-  const webhookUrl = `https://${host}/api/discord`;
-  // Slightly under maxDuration (seconds) so the worker is not cut off mid-flight.
-  const durationMs = Math.max(1, (maxDuration - 10) * 1000);
-  const chat = getDiscordChat();
-
-  await chat.initialize();
-  const discordAdapter = chat.getAdapter("discord");
-
-  return discordAdapter.startGatewayListener(
-    { waitUntil: (task: Promise<unknown>) => after(() => task) },
-    durationMs,
-    undefined,
-    webhookUrl
-  );
-};
-
 const handleAgentJob = async (payload: {
   text: string;
   userId: string;
@@ -144,10 +119,7 @@ const handleAgentJob = async (payload: {
   try {
     const history = await getConversationHistory(payload.channelId);
     console.log(`[Memory] Loaded ${history.length} turns for channel ${payload.channelId}`);
-    const messages: ChatMessage[] = [
-      ...history,
-      { role: "user", content: payload.text },
-    ];
+    const messages: ChatMessage[] = [...history, { role: "user", content: payload.text }];
 
     const result = await createCodyAgent({
       messages,
@@ -174,7 +146,7 @@ const handleAgentJob = async (payload: {
     console.log(`[QStash] ${type} ${messageId} - executed`);
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("[Discord Gateway] Agent job failed", error);
+    console.error("[Discord Gateway Agent] Agent job failed", error);
     if (redis) {
       await redis.del(claimKey);
     } else {
@@ -189,13 +161,13 @@ const handleAgentJob = async (payload: {
         "I hit an error while processing your request. Please try again in a moment."
       );
     } catch (fallbackError) {
-      console.error("[Discord Gateway] Error fallback post failed", fallbackError);
+      console.error("[Discord Gateway Agent] Error fallback post failed", fallbackError);
     }
     return Response.json({ ok: false }, { status: 500 });
   }
 };
 
-const handler = async (request: Request): Promise<Response> => {
+export async function POST(request: Request): Promise<Response> {
   try {
     const signature = request.headers.get("upstash-signature");
     const rawBody = await request.text();
@@ -213,30 +185,18 @@ const handler = async (request: Request): Promise<Response> => {
     } catch {
       return Response.json({ error: "Invalid JSON payload" }, { status: 400 });
     }
-    const parsed = qstashJobSchema.safeParse(parsedJson);
-    if (!parsed.success) {
-      console.error("[Discord Gateway] QStash payload validation failed", parsed.error);
-      if (process.env.NODE_ENV === "production") {
-        return Response.json({ error: "Invalid QStash payload" }, { status: 400 });
-      }
-      return Response.json(
-        { error: "Invalid QStash payload", details: parsed.error.flatten() },
-        { status: 400 }
-      );
-    }
 
-    if (parsed.data.type === "keepalive") {
-      return startGatewayKeepalive();
+    const parsed = qstashJobSchema.safeParse(parsedJson);
+    if (!parsed.success || parsed.data.type !== "agent") {
+      return Response.json({ error: "Invalid QStash payload" }, { status: 400 });
     }
 
     return handleAgentJob(parsed.data);
   } catch (error) {
-    console.error("[Discord Gateway] Worker error", error);
+    console.error("[Discord Gateway Agent] Worker error", error);
     return Response.json({ error: "Failed to process QStash request" }, { status: 500 });
   }
-};
-
-export const POST = handler;
+}
 
 export async function GET(): Promise<Response> {
   return new Response("Use QStash signed POST for this endpoint.", { status: 405 });

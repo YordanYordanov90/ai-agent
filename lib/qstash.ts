@@ -29,26 +29,34 @@ export const qstashJobSchema = z.discriminatedUnion("type", [
 ]);
 
 export type QstashJob = z.infer<typeof qstashJobSchema>;
+type AgentQstashJob = Extract<QstashJob, { type: "agent" }>;
 
 const getClient = () => new Client({ token: process.env.QSTASH_TOKEN });
 
-export const getGatewayEndpoint = (): string => {
+const buildDefaultEndpoint = (path: string): string => {
+  const hostSource =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
+  if (!hostSource) {
+    throw new Error("No worker endpoint configured. Set VERCEL_URL.");
+  }
+
+  return `https://${normalizeHost(hostSource)}${path}`;
+};
+
+export const getAgentWorkerEndpoint = (): string => {
   if (process.env.DISCORD_WORKER_ENDPOINT) {
     return process.env.DISCORD_WORKER_ENDPOINT;
   }
 
-  const hostSource =
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL;
-  if (!hostSource) {
-    throw new Error("No worker endpoint configured. Set DISCORD_WORKER_ENDPOINT or VERCEL_URL.");
-  }
-
-  return `https://${normalizeHost(hostSource)}/api/discord/gateway`;
+  return buildDefaultEndpoint("/api/discord/gateway/agent");
 };
 
-export const publishQstashJob = async (job: QstashJob) => {
+export const getKeepaliveEndpoint = (): string =>
+  buildDefaultEndpoint("/api/discord/gateway/keepalive");
+
+export const publishQstashJob = async (job: AgentQstashJob) => {
   const client = getClient();
-  const url = getGatewayEndpoint();
+  const url = getAgentWorkerEndpoint();
 
   return client.publishJSON({
     url,
